@@ -10,6 +10,7 @@ namespace TechTest\Controllers;
 
 use Http\Request;
 use Http\Response;
+use TechTest\Csrf\Csrf;
 use TechTest\Person\PersonEntity;
 use TechTest\Template\Renderer;
 use TechTest\People\People;
@@ -32,45 +33,58 @@ class TechTest
 	 * @var People
 	 */
 	private $people;
+	/**
+	 * @var Csrf
+	 */
+	private $csrf;
 
-	public function __construct(Request $request, Response $response, Renderer $renderer, People $people)
+	public function __construct(Request $request, Response $response, Renderer $renderer, People $people, Csrf $csrf)
 	{
 		$this->request = $request;
 		$this->response = $response;
 		$this->renderer = $renderer;
 		$this->people = $people;
+		$this->csrf = $csrf;
 	}
 
+	/**
+	 * Main GET request to display all currently stored people
+	 *
+	 * URI: /
+	 *
+	 */
 	public function show()
 	{
 		$template_vars = array(
-			'people' => $this->people->getAll(),
+			'people'			=> $this->people->getAll(),
+			'csrf'				=> $this->csrf->getNewToken(),
 			'execution_time'	=> sprintf("%.4f", microtime(true) - $_SERVER["REQUEST_TIME_FLOAT"]),
 		);
 		$html = $this->renderer->render('page/view.php', $template_vars);
 		$this->response->setContent($html);
 	}
 
-	public function add() {
-		try {
-			$person = (new PersonEntity())->setFirstname($this->request->getParameter('firstname'))
-				->setSurname($this->request->getParameter('surname'));
-			$person->setId($this->people->add($person));
-			$json = $person->toJson();
-			$response = 200;
-		}catch(\Exception $e) {
-			switch($e->getMessage()) {
-				case 'Firstname must be a string':
-					$message = "badfirstname";
-					break;
-				case 'Surname must be a string':
-					$message = "badsurname";
-					break;
-				default:
-					$message = "error";
-					break;
+	/**
+	 * Add a person from the values submitted to POST
+	 *
+	 * URI: /add
+	 *
+	 */
+	public function add()
+	{
+		if($this->request->getParameter('csrf') === $this->csrf->getCurrentToken()) {
+			try {
+				$person = (new PersonEntity())->setFirstname($this->request->getParameter('firstname'))
+					->setSurname($this->request->getParameter('surname'));
+				$person->setId($this->people->add($person));
+				$json = $person->toJson();
+				$response = 200;
+			} catch (\Exception $e) {
+				$json = json_encode(array('message' => "failure"));
+				$response = 500;
 			}
-			$json = json_encode(array('message' => $message));
+		} else {
+			$json = json_encode(array('message' => "failure"));
 			$response = 500;
 		}
 		$template_vars = array(
@@ -81,27 +95,28 @@ class TechTest
 		$this->response->setContent($html);
 	}
 
-	public function update() {
-		try {
-			$person = (new PersonEntity())->setId((int)$this->request->getParameter('id'))
-				->setFirstname($this->request->getParameter('firstname'))
-				->setSurname($this->request->getParameter('surname'));
-			$this->people->update($person);
-			$json = 'Updated';
-			$response = 200;
-		}catch(\Exception $e) {
-			switch($e->getMessage()) {
-				case 'Firstname must be a string':
-					$message = "badfirstname";
-					break;
-				case 'Surname must be a string':
-					$message = "badsurname";
-					break;
-				default:
-					$message = $e->getMessage();
-					break;
+	/**
+	 * Update a person with the details submitted to POST
+	 *
+	 * URI: /update
+	 *
+	 */
+	public function update()
+	{
+		if($this->request->getParameter('csrf') === $this->csrf->getCurrentToken()) {
+			try {
+				$person = (new PersonEntity())->setId((int)$this->request->getParameter('id'))
+					->setFirstname($this->request->getParameter('firstname'))
+					->setSurname($this->request->getParameter('surname'));
+				$this->people->update($person);
+				$json = $person->toJson();
+				$response = 200;
+			} catch (\Exception $e) {
+				$json = json_encode(array('message' => "failure"));
+				$response = 500;
 			}
-			$json = json_encode(array('message' => $message));
+		} else {
+			$json = json_encode(array('message' => "failure"));
 			$response = 500;
 		}
 		$template_vars = array(
@@ -112,14 +127,30 @@ class TechTest
 		$this->response->setContent($html);
 	}
 
+	/**
+	 * Delete a single person based on the ID
+	 *
+	 * URI: /delete
+	 *
+	 */
 	public function delete()
 	{
-		$this->people->deleteById($this->request->getParameter('id'));
-		$json = 'Deleted';
-		$response = 200;
+		if($this->request->getParameter('csrf') === $this->csrf->getCurrentToken()) {
+			try {
+				$this->people->deleteById((int)$this->request->getParameter('id'));
+				$message = 'success';
+				$response = 200;
+			} catch (\Exception $e) {
+				$message = 'failure';
+				$response = 500;
+			}
+		} else {
+			$message = 'failure';
+			$response = 500;
+		}
 
 		$template_vars = array(
-			'json' => $json,
+			'json' =>  json_encode(array('message' => $message)),
 		);
 		$html = $this->renderer->render('page/data.php', $template_vars);
 		$this->response->setStatusCode($response);

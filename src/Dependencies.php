@@ -18,6 +18,9 @@ $injector->define('Http\HttpRequest', [
 $injector->alias('TechTest\People\People', 'TechTest\People\JsonPeople');
 $injector->share('TechTest\People\JsonPeople');
 
+$injector->alias('TechTest\Csrf\Csrf', 'TechTest\Csrf\SessionCsrf');
+$injector->share('TechTest\Csrf\SessionCsrf');
+
 $injector->alias('TechTest\Template\Renderer', 'TechTest\Template\PhpRenderer');
 
 return $injector;

@@ -6,54 +6,92 @@ $(function() {
     $(".add").click(function() {
         var firstname = $(this).closest('tr').find('.firstname');
         var surname = $(this).closest('tr').find('.surname');
+        var csrf = $("#csrf").val();
         $.ajax({
             url: "/add",
             method: "post",
             data: {
-                firstname: firstname.val(),
-                surname: surname.val()
+                firstname:  firstname.val(),
+                surname:    surname.val(),
+                csrf:       csrf
             },
             success: function (data) {
-                $("tbody").append('<tr class="test">' +
-                    '<td><input type="text" name="people[][firstname]" class="firstname" value="' + firstname.val() + '" /></td>' +
-                    '<td><input type="text" name="people[][surname]" class="surname" value="' + surname.val() + '" /></td>' +
-                    '<td><button class="update">Update</button><button class="delete">Delete</button></td>' +
-                    '</tr>');
+                var response = $.parseJSON(data);
+                var newRow = $(".hid").clone();
+                newRow.find('.firstname').val(response.firstname);
+                newRow.find('.surname').val(response.surname);
+                newRow.find('.id').val(response.id);
+                newRow.removeClass('hid');
+                $("tbody").append(newRow);
+
+                updateObserver();
+                deleteObserver();
+
                 firstname.val('');
                 surname.val('');
+            },
+            complete: function (xhr) {
+                if (xhr.status != 200) {
+                    alert('Failed to add row');
+                }
             }
         });
     });
-    $(".update").click(function() {
+    updateObserver();
+    deleteObserver();
+});
+function updateObserver() {
+    $(".update").click(function () {
         var id = $(this).closest('tr').find('.id');
         var firstname = $(this).closest('tr').find('.firstname');
         var surname = $(this).closest('tr').find('.surname');
+        var csrf = $("#csrf").val();
         $.ajax({
             url: "/update",
             method: "post",
             data: {
                 id: id.val(),
                 firstname: firstname.val(),
-                surname: surname.val()
+                surname: surname.val(),
+                csrf: csrf
             },
             success: function (data) {
-                alert('Successfully updated: ' + firstname.val() + ' ' + surname.val());
+                var response = $.parseJSON(data);
+                id.val(response.id);
+                firstname.val(response.firstname);
+                surname.val(response.surname);
+            },
+            complete: function (xhr) {
+                if (xhr.status != 200) {
+                    alert('Failed to update row');
+                }
             }
         });
     });
-
-    $(".delete").click(function() {
+}
+function deleteObserver() {
+    $(".delete").click(function () {
         var row = $(this).closest('tr');
         var id = $(this).closest('tr').find('.id');
+        var csrf = $("#csrf").val();
         $.ajax({
             url: "/delete",
             method: "post",
             data: {
-                id: id.val()
+                id: id.val(),
+                csrf: csrf
             },
             success: function (data) {
-               row.empty();
+                var response = $.parseJSON(data);
+                if (response.message == 'success') {
+                    row.empty();
+                }
+            },
+            complete: function (xhr) {
+                if (xhr.status != 200) {
+                    alert('Failed to delete row');
+                }
             }
         });
     });
-});
+}

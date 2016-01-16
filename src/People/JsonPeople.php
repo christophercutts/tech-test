@@ -72,11 +72,12 @@ class JsonPeople implements People
 	public function deleteById($id)
 	{
 		$people = $this->getPeople();
-		if(isset($people[$id])) {
-			unset($people[$id]);
-			$this->setPeople($people);
-			$this->save();
-		}
+		if(!is_int($id) || !isset($people[$id]))
+			throw new \Exception('Not a valid ID');
+
+		unset($people[$id]);
+		$this->setPeople($people);
+		$this->save();
 	}
 
 	private function save() {
