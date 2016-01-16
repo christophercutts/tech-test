@@ -17,7 +17,7 @@ class JsonPeople implements People
 	 */
 	protected $people = array();
 
-	const STORE_LOC = __DIR__ . '/../../storage/store.json';
+	const STORE_LOC = ROOT_DIR . '/../storage/store.json';
 
 	public function __construct()
 	{
